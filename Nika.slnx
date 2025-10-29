@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nika.Cli/Nika.Cli.csproj" />
+    <Project Path="src/Nika/Nika.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nika.Tests/Nika.Tests.csproj" />
+  </Folder>
+</Solution>
