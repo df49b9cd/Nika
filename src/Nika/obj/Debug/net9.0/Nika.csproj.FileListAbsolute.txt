@@ -1,0 +1,12 @@
+/Users/smolesen/Dev/Nika/src/Nika/bin/Debug/net9.0/Nika.deps.json
+/Users/smolesen/Dev/Nika/src/Nika/bin/Debug/net9.0/Nika.dll
+/Users/smolesen/Dev/Nika/src/Nika/bin/Debug/net9.0/Nika.pdb
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.GeneratedMSBuildEditorConfig.editorconfig
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.AssemblyInfoInputs.cache
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.AssemblyInfo.cs
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.csproj.CoreCompileInputs.cache
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.dll
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/refint/Nika.dll
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.pdb
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/ref/Nika.dll
+/Users/smolesen/Dev/Nika/src/Nika/obj/Debug/net9.0/Nika.csproj.AssemblyReference.cache

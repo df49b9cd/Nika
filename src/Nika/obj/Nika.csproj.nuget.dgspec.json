@@ -1,0 +1,98 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/smolesen/Dev/Nika/src/Nika/Nika.csproj": {}
+  },
+  "projects": {
+    "/Users/smolesen/Dev/Nika/src/Nika/Nika.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/smolesen/Dev/Nika/src/Nika/Nika.csproj",
+        "projectName": "Nika",
+        "projectPath": "/Users/smolesen/Dev/Nika/src/Nika/Nika.csproj",
+        "packagesPath": "/Users/smolesen/.nuget/packages/",
+        "outputPath": "/Users/smolesen/Dev/Nika/src/Nika/obj/",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "configFilePaths": [
+          "/Users/smolesen/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "allWarningsAsErrors": true,
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.Data.SqlClient": {
+              "target": "Package",
+              "version": "[5.2.2, )",
+              "versionCentrallyManaged": true
+            },
+            "Npgsql": {
+              "target": "Package",
+              "version": "[9.0.4, )",
+              "versionCentrallyManaged": true
+            },
+            "System.IO.Hashing": {
+              "target": "Package",
+              "version": "[8.0.0, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "Microsoft.Data.SqlClient": "5.2.2",
+            "Microsoft.NET.Test.Sdk": "18.0.0",
+            "Npgsql": "9.0.4",
+            "System.CommandLine": "2.0.0-beta4.22272.1",
+            "System.IO.Hashing": "8.0.0",
+            "Testcontainers.MsSql": "4.6.0",
+            "Testcontainers.PostgreSql": "4.6.0",
+            "xunit.runner.visualstudio": "3.1.5",
+            "xunit.v3": "3.1.0"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/x64/sdk/9.0.306/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
