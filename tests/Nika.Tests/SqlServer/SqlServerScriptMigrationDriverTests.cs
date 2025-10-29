@@ -114,15 +114,10 @@ WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table AND COLUMN_NAME = @column;
 public sealed class SqlServerContainerFixture : IAsyncLifetime
 {
     private const string Password = "YourStrong!Passw0rd";
-    private readonly MsSqlContainer _container;
-
-    public SqlServerContainerFixture()
-    {
-        _container = new MsSqlBuilder()
-            .WithPassword(Password)
-            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-            .Build();
-    }
+    private readonly MsSqlContainer _container = new MsSqlBuilder()
+        .WithPassword(Password)
+        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+        .Build();
 
     public string ConnectionString => _container.GetConnectionString();
 

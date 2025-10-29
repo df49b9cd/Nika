@@ -117,17 +117,12 @@ public sealed class PostgresScriptMigrationDriverTests(PostgresContainerFixture 
 
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container;
-
-    public PostgresContainerFixture()
-    {
-        _container = new PostgreSqlBuilder()
-            .WithDatabase("nika")
-            .WithUsername("nika")
-            .WithPassword("nika")
-            .WithImage("postgres:16-alpine")
-            .Build();
-    }
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
+        .WithDatabase("nika")
+        .WithUsername("nika")
+        .WithPassword("nika")
+        .WithImage("postgres:16-alpine")
+        .Build();
 
     public string ConnectionString => _container.GetConnectionString();
 

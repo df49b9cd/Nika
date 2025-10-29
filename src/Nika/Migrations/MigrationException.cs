@@ -15,13 +15,8 @@ public class MigrationException : Exception
     }
 }
 
-public sealed class DirtyMigrationStateException : MigrationException
-{
-    public DirtyMigrationStateException()
-        : base("Cannot perform migration operations while the version store is marked dirty.")
-    {
-    }
-}
+public sealed class DirtyMigrationStateException()
+    : MigrationException("Cannot perform migration operations while the version store is marked dirty.");
 
 public sealed class MissingMigrationException(long version) : MigrationException($"Migration with version '{version}' was not found in the registry.")
 {

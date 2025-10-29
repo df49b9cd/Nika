@@ -8,9 +8,9 @@ namespace Nika.Migrations;
 public sealed class InMemoryMigrationDriver : IMigrationDriver
 {
     private readonly object _sync = new();
-    private readonly List<long> _appliedVersions = new();
-    private readonly List<long> _revertedVersions = new();
-    private readonly List<string> _log = new();
+    private readonly List<long> _appliedVersions = [];
+    private readonly List<long> _revertedVersions = [];
+    private readonly List<string> _log = [];
     private bool _locked;
     private long? _version;
     private bool _isDirty;

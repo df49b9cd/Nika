@@ -14,21 +14,13 @@ using Xunit;
 
 namespace Nika.Tests.CliIntegration;
 
-public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture>, IClassFixture<SqlServerContainerFixture>
+public sealed class CliIntegrationTests(PostgresContainerFixture postgres, SqlServerContainerFixture sqlServer)
+    : IClassFixture<PostgresContainerFixture>, IClassFixture<SqlServerContainerFixture>
 {
-    private readonly PostgresContainerFixture _postgres;
-    private readonly SqlServerContainerFixture _sqlServer;
-
-    public CliIntegrationTests(PostgresContainerFixture postgres, SqlServerContainerFixture sqlServer)
-    {
-        _postgres = postgres;
-        _sqlServer = sqlServer;
-    }
-
     [Fact]
     public async Task Postgres_UpDownVersion()
     {
-        EnsureSupported();
+        //EnsureSupported();
 
         var token = TestContext.Current.CancellationToken;
         var parser = CommandApp.Build("test", token);
@@ -37,33 +29,30 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
         try
         {
             var console = new TestConsole();
-            await parser.InvokeAsync(new[]
-            {
+            await parser.InvokeAsync([
                 "up",
                 "--source", sourceUri,
-                "--database", _postgres.ConnectionString,
-            }, console);
+                "--database", postgres.ConnectionString
+            ], console);
 
             console = new TestConsole();
-            await parser.InvokeAsync(new[]
-            {
+            await parser.InvokeAsync([
                 "version",
                 "--source", sourceUri,
-                "--database", _postgres.ConnectionString,
-            }, console);
+                "--database", postgres.ConnectionString
+            ], console);
 
             Assert.Contains("(clean)", console.Out.ToString() ?? string.Empty);
 
             console = new TestConsole();
-            await parser.InvokeAsync(new[]
-            {
+            await parser.InvokeAsync([
                 "down",
                 "1",
                 "--source", sourceUri,
-                "--database", _postgres.ConnectionString,
-            }, console);
+                "--database", postgres.ConnectionString
+            ], console);
 
-            var state = await _postgres.GetStateAsync();
+            var state = await postgres.GetStateAsync();
             Assert.Equal(2, state.Version);
         }
         finally
@@ -75,7 +64,7 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
     [Fact]
     public async Task SqlServer_DropForce()
     {
-        EnsureSupported();
+        //EnsureSupported();
 
         var token = TestContext.Current.CancellationToken;
         var parser = CommandApp.Build("test", token);
@@ -83,22 +72,20 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
         var (directory, sourceUri) = CopyMigrations();
         try
         {
-            await parser.InvokeAsync(new[]
-            {
+            await parser.InvokeAsync([
                 "up",
                 "--source", sourceUri,
-                "--database", _sqlServer.ConnectionString,
-            }, new TestConsole());
+                "--database", sqlServer.ConnectionString
+            ], new TestConsole());
 
-            await parser.InvokeAsync(new[]
-            {
+            await parser.InvokeAsync([
                 "drop",
                 "--force",
                 "--source", sourceUri,
-                "--database", _sqlServer.ConnectionString,
-            }, new TestConsole());
+                "--database", sqlServer.ConnectionString
+            ], new TestConsole());
 
-            var state = await _sqlServer.GetStateAsync();
+            var state = await sqlServer.GetStateAsync();
             Assert.Null(state.Version);
         }
         finally

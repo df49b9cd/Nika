@@ -94,9 +94,9 @@ public sealed class FileSystemMigrationSourceTests : IDisposable
 
     private sealed class RecordingScriptDriver : IScriptMigrationDriver
     {
-        private readonly List<long> _applied = new();
-        private readonly List<long> _reverted = new();
-        private readonly List<(long Version, MigrationDirection Direction, string Content)> _scripts = new();
+        private readonly List<long> _applied = [];
+        private readonly List<long> _reverted = [];
+        private readonly List<(long Version, MigrationDirection Direction, string Content)> _scripts = [];
         private long? _version;
         private bool _isDirty;
         private bool _locked;

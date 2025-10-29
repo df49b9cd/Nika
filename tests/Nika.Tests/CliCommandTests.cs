@@ -20,15 +20,14 @@ public class CliCommandTests
         var parser = CommandApp.Build("test-version", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[]
-        {
+        var exitCode = await parser.Parse([
             "create",
             "add_users",
             "--dir",
             temp.Path,
             "--ext",
-            "sql",
-        }).InvokeAsync(console);
+            "sql"
+        ]).InvokeAsync(console);
 
         Assert.Equal(0, exitCode);
 
@@ -45,7 +44,7 @@ public class CliCommandTests
         var parser = CommandApp.Build("1.2.3", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[] { "--version" }).InvokeAsync(console);
+        var exitCode = await parser.Parse(["--version"]).InvokeAsync(console);
 
         Assert.Equal(0, exitCode);
         Assert.Contains("1.2.3", console.Out.ToString() ?? string.Empty);
@@ -57,16 +56,15 @@ public class CliCommandTests
         var parser = CommandApp.Build("test", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[]
-        {
+        var exitCode = await parser.Parse([
             "create",
             "add_users",
             "--ext",
             "sql",
             "--seq",
             "--format",
-            "unix",
-        }).InvokeAsync(console);
+            "unix"
+        ]).InvokeAsync(console);
 
         Assert.Equal(2, exitCode);
         Assert.Contains("mutually exclusive", console.Error.ToString() ?? string.Empty);
@@ -78,11 +76,10 @@ public class CliCommandTests
         var parser = CommandApp.Build("test", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[]
-        {
+        var exitCode = await parser.Parse([
             "create",
-            "add_users",
-        }).InvokeAsync(console);
+            "add_users"
+        ]).InvokeAsync(console);
 
         Assert.NotEqual(0, exitCode);
         Assert.Contains("Option '--ext' is required", console.Error.ToString() ?? string.Empty);
@@ -94,11 +91,10 @@ public class CliCommandTests
         var parser = CommandApp.Build("test", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[]
-        {
+        var exitCode = await parser.Parse([
             "steps",
-            "0",
-        }).InvokeAsync(console);
+            "0"
+        ]).InvokeAsync(console);
 
         Assert.Equal(2, exitCode);
         Assert.Contains("must not be zero", console.Error.ToString() ?? string.Empty);
@@ -110,12 +106,11 @@ public class CliCommandTests
         var parser = CommandApp.Build("test", CancellationToken.None);
         var console = new TestConsole();
 
-        var exitCode = await parser.Parse(new[]
-        {
+        var exitCode = await parser.Parse([
             "up",
             "--source",
-            "file:///tmp/migrations",
-        }).InvokeAsync(console);
+            "file:///tmp/migrations"
+        ]).InvokeAsync(console);
 
         Assert.Equal(2, exitCode);
         Assert.Contains("--database option must be provided", console.Error.ToString() ?? string.Empty);

@@ -19,7 +19,7 @@ public class MigrationRunnerTests
 
         await runner.UpAsync(TestToken);
 
-        Assert.Equal(new long[] { 1, 2, 3 }, driver.AppliedVersions);
+        Assert.Equal([1, 2, 3], driver.AppliedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(3, state.Version);
         Assert.False(state.IsDirty);
@@ -35,7 +35,7 @@ public class MigrationRunnerTests
         await runner.UpAsync(TestToken);
         await runner.DownAsync(TestToken);
 
-        Assert.Equal(new long[] { 3 }, driver.RevertedVersions);
+        Assert.Equal([3], driver.RevertedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(2, state.Version);
         Assert.False(state.IsDirty);
@@ -50,7 +50,7 @@ public class MigrationRunnerTests
 
         await runner.StepsAsync(2, TestToken);
 
-        Assert.Equal(new long[] { 1, 2 }, driver.AppliedVersions);
+        Assert.Equal([1, 2], driver.AppliedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(2, state.Version);
         Assert.False(state.IsDirty);
@@ -66,7 +66,7 @@ public class MigrationRunnerTests
         await runner.UpAsync(TestToken);
         await runner.StepsAsync(-2, TestToken);
 
-        Assert.Equal(new long[] { 4, 3 }, driver.RevertedVersions);
+        Assert.Equal([4, 3], driver.RevertedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(2, state.Version);
         Assert.False(state.IsDirty);
@@ -157,7 +157,7 @@ public class MigrationRunnerTests
         var ex = await Assert.ThrowsAsync<MigrationException>(() => runner.UpAsync(TestToken));
         Assert.Contains("Failed to apply migration 2", ex.Message);
 
-        Assert.Equal(new long[] { 1 }, driver.AppliedVersions);
+        Assert.Equal([1], driver.AppliedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(2, state.Version);
         Assert.True(state.IsDirty);
@@ -258,7 +258,7 @@ public class MigrationRunnerTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => upTask);
 
-        Assert.Equal(new long[] { 1 }, driver.AppliedVersions);
+        Assert.Equal([1], driver.AppliedVersions);
         var state = await driver.GetVersionStateAsync(TestToken);
         Assert.Equal(2, state.Version);
         Assert.True(state.IsDirty);

@@ -10,7 +10,7 @@ public sealed class InMemoryMigrationSource : IMigrationSource
     private readonly List<Migration> _migrations;
 
     public InMemoryMigrationSource()
-        : this(Array.Empty<Migration>())
+        : this([])
     {
     }
 

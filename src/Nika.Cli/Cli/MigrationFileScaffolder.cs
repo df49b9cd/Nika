@@ -63,7 +63,7 @@ internal sealed class MigrationFileScaffolder
 
         await Task.CompletedTask.ConfigureAwait(false);
 
-        return new MigrationScaffoldResult(new[] { upPath, downPath });
+        return new MigrationScaffoldResult([upPath, downPath]);
     }
 
     private string GetNextSequentialVersion(string extension, int digits)

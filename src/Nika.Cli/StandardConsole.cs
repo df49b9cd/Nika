@@ -7,17 +7,11 @@ namespace Nika.Cli;
 
 internal sealed class StandardConsole : IConsole
 {
-    public StandardConsole()
-    {
-        Out = new StreamWriterAdapter(Console.Out);
-        Error = new StreamWriterAdapter(Console.Error);
-    }
-
-    public IStandardStreamWriter Out { get; }
+    public IStandardStreamWriter Out { get; } = new StreamWriterAdapter(Console.Out);
 
     public bool IsOutputRedirected => Console.IsOutputRedirected;
 
-    public IStandardStreamWriter Error { get; }
+    public IStandardStreamWriter Error { get; } = new StreamWriterAdapter(Console.Error);
 
     public bool IsErrorRedirected => Console.IsErrorRedirected;
 
