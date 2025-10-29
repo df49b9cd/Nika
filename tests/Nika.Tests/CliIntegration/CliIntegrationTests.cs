@@ -28,10 +28,7 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
     [Fact]
     public async Task Postgres_UpDownVersion()
     {
-        if (!EnsureSupported())
-        {
-            return;
-        }
+        EnsureSupported();
 
         var token = TestContext.Current.CancellationToken;
         var parser = CommandApp.Build("test", token);
@@ -78,10 +75,7 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
     [Fact]
     public async Task SqlServer_DropForce()
     {
-        if (!EnsureSupported())
-        {
-            return;
-        }
+        EnsureSupported();
 
         var token = TestContext.Current.CancellationToken;
         var parser = CommandApp.Build("test", token);
@@ -113,18 +107,17 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
         }
     }
 
-    private static bool EnsureSupported()
+    private static void EnsureSupported()
     {
         if (!OperatingSystem.IsLinux())
         {
-            return false;
+            Assert.Skip("Testcontainers-based CLI tests require Linux environment.");
         }
 
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")))
         {
-            return false;
+            Assert.Skip("Skipping container-backed CLI integration tests outside CI runner.");
         }
-        return true;
     }
 
     private static (string Directory, string SourceUri) CopyMigrations()
