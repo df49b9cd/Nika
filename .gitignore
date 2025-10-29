@@ -1,0 +1,105 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/TestResults/
+**/artifacts/
+
+# .NET tooling
+*.user
+*.userosscache
+*.suo
+*.cache
+*.csproj.user
+*.rsuser
+*.snupkg
+*.nupkg
+*.log
+*.lock.json
+*.vspscc
+project.lock.json
+packages/
+
+# Visual Studio
+.vs/
+*.obj
+*.pdb
+*.idb
+*.opendb
+*.ipch
+*.aps
+*.ncb
+*.psess
+*.vsp
+*.vspx
+*.vsmdi
+TestResult.xml
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Local caches
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs and coverage
+*.tlog
+*.svclog
+*.coverage
+*.coveragexml
+coverage.info
+*.lcov
+
+# NuGet
+**/packages/*
+!.nuget/
+.nuget/packages/
+
+# Azure
+*.azurePubxml
+*.publishsettings
+
+# Dotnet secrets / user config
+appsettings.Development.json
+secrets.json
+
+# Generated files
+*.generated.cs
+*.g.cs
+*_i.c
+*_p.c
+*_h.h
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swm
+*.swo
+*.orig
+*.rej
+
+# OS specific
+.Spotlight-V100
+.Trashes
+ehthumbs_vista.db
+
+# Containers / Docker
+**/.docker-compose.*
+docker-compose.override.yml
+
+# Rider spellchecker
+.idea/dictionaries/
+
