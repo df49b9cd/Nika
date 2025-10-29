@@ -281,15 +281,9 @@ internal static class MigrationCommandHandlers
     private static async Task<bool> ConfirmAsync(string prompt, InvocationContext context, CancellationToken cancellationToken)
     {
         Write(context, prompt);
-        string? response;
-        if (Console.IsInputRedirected)
-        {
-            response = await Task.Run(() => Console.ReadLine(), cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            response = await Task.Run(() => Console.ReadLine(), cancellationToken).ConfigureAwait(false);
-        }
+        string? response = Console.IsInputRedirected
+            ? await Task.Run(() => Console.ReadLine(), cancellationToken).ConfigureAwait(false)
+            : await Task.Run(() => Console.ReadLine(), cancellationToken).ConfigureAwait(false);
         if (response is null)
         {
             return false;
