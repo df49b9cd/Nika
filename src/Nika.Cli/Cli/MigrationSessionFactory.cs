@@ -22,7 +22,7 @@ internal sealed class MigrationSession(IMigrationSource source, IMigrationDriver
 
 internal static class MigrationSessionFactory
 {
-    public static async Task<MigrationSession> CreateAsync(GlobalOptions options, CancellationToken cancellationToken)
+    public static async Task<MigrationSession> CreateAsync(GlobalOptions options)
     {
         var source = CreateSource(options);
         var driver = CreateDriver(options);

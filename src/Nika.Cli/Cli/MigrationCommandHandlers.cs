@@ -148,7 +148,6 @@ internal static class MigrationCommandHandlers
     }
 
     public static async Task HandleCreateAsync(
-        GlobalOptions options,
         string name,
         string extension,
         string directory,

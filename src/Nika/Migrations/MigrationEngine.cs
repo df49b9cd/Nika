@@ -7,8 +7,7 @@ public static class MigrationEngine
 
     public static Task<MigrationRunner> NewAsync(
         IMigrationSource source,
-        IMigrationDriver driver,
-        CancellationToken cancellationToken = default)
+        IMigrationDriver driver)
     {
         var runner = new MigrationRunner(source, driver);
         return Task.FromResult(runner);
