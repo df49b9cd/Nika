@@ -1,10 +1,5 @@
-using System;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Nika.Cli;
 using Xunit;
 

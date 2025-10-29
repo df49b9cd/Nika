@@ -1,7 +1,5 @@
-using System;
 using System.CommandLine;
 using System.CommandLine.IO;
-using System.IO;
 
 namespace Nika.Cli;
 

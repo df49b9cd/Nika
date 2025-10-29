@@ -1,11 +1,5 @@
-using System;
-using System.CommandLine.Binding;
 using System.CommandLine.Invocation;
-using System.CommandLine.Parsing;
 using System.Globalization;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Nika.Migrations;
 
 namespace Nika.Cli;

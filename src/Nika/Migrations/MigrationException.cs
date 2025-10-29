@@ -1,5 +1,3 @@
-using System;
-
 namespace Nika.Migrations;
 
 public class MigrationException : Exception

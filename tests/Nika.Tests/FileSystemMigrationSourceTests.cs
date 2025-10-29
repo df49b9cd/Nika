@@ -1,9 +1,3 @@
-using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Nika.Migrations;
 using Nika.Migrations.Sources;
 using Xunit;

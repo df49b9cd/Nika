@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Data.SqlClient;
 
 namespace Nika.Migrations.Drivers.SqlServer;

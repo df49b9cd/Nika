@@ -1,9 +1,6 @@
-using System;
 using System.CommandLine;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
-using System.IO;
-using System.Threading.Tasks;
 using Nika.Cli;
 using Nika.Migrations;
 using Nika.Migrations.Drivers.Postgres;

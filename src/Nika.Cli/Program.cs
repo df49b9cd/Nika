@@ -1,7 +1,5 @@
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
-using System.Threading;
 using Nika.Cli;
 
 using var cts = new CancellationTokenSource();
