@@ -304,7 +304,6 @@ internal static class CommandApp
             var timezone = context.ParseResult.GetValueForOption(timezoneOption) ?? "UTC";
 
             await MigrationCommandHandlers.HandleCreateAsync(
-                options,
                 name,
                 extension,
                 directory,

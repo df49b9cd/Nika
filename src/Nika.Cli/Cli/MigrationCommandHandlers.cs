@@ -213,7 +213,7 @@ internal static class MigrationCommandHandlers
 
         try
         {
-            await using var session = await MigrationSessionFactory.CreateAsync(options, cancellationToken).ConfigureAwait(false);
+            await using var session = await MigrationSessionFactory.CreateAsync(options).ConfigureAwait(false);
             session.Runner.PrefetchCount = options.Prefetch > 0 ? (int)options.Prefetch : 0;
             session.Runner.Logger = options.Verbose
                 ? message => WriteLine(context, message)
