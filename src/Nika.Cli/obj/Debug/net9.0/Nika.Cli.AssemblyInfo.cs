@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Nika.Cli")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec6aeab732092908dcb2a20600c55e2a74070dff")]
 [assembly: System.Reflection.AssemblyProductAttribute("Nika.Cli")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Nika.Cli")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

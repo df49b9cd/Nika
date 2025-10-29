@@ -1,11 +1,15 @@
 using System;
+using System.CommandLine;
 using System.CommandLine.IO;
+using System.CommandLine.Parsing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Nika.Cli;
-using Testcontainers.PostgreSql;
+using Nika.Migrations;
+using Nika.Migrations.Drivers.Postgres;
+using Nika.Migrations.Drivers.SqlServer;
 using Testcontainers.MsSql;
+using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace Nika.Tests.CliIntegration;
@@ -24,83 +28,106 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
     [Fact]
     public async Task Postgres_UpDownVersion()
     {
-        SkipIfUnsupported();
-
-        var migrations = CopyMigrations();
-        var parser = CommandApp.Build("test", default);
-        var console = new TestConsole();
-
-        await parser.Parse(new[]
+        if (!EnsureSupported())
         {
-            "up",
-            "--source", $"file://{migrations}",
-            "--database", _postgres.ConnectionString,
-        }).InvokeAsync(console);
+            return;
+        }
 
-        console = new TestConsole();
-        await parser.Parse(new[]
+        var token = TestContext.Current.CancellationToken;
+        var parser = CommandApp.Build("test", token);
+
+        var (directory, sourceUri) = CopyMigrations();
+        try
         {
-            "version",
-            "--source", $"file://{migrations}",
-            "--database", _postgres.ConnectionString,
-        }).InvokeAsync(console);
+            var console = new TestConsole();
+            await parser.InvokeAsync(new[]
+            {
+                "up",
+                "--source", sourceUri,
+                "--database", _postgres.ConnectionString,
+            }, console);
 
-        Assert.Contains("(clean)", console.Out.ToString() ?? string.Empty);
+            console = new TestConsole();
+            await parser.InvokeAsync(new[]
+            {
+                "version",
+                "--source", sourceUri,
+                "--database", _postgres.ConnectionString,
+            }, console);
 
-        console = new TestConsole();
-        await parser.Parse(new[]
+            Assert.Contains("(clean)", console.Out.ToString() ?? string.Empty);
+
+            console = new TestConsole();
+            await parser.InvokeAsync(new[]
+            {
+                "down",
+                "1",
+                "--source", sourceUri,
+                "--database", _postgres.ConnectionString,
+            }, console);
+
+            var state = await _postgres.GetStateAsync();
+            Assert.Equal(2, state.Version);
+        }
+        finally
         {
-            "down",
-            "1",
-            "--source", $"file://{migrations}",
-            "--database", _postgres.ConnectionString,
-        }).InvokeAsync(console);
-
-        var state = await _postgres.GetStateAsync();
-        Assert.Equal(2, state.Version);
+            TryDelete(directory);
+        }
     }
 
     [Fact]
     public async Task SqlServer_DropForce()
     {
-        SkipIfUnsupported();
-
-        var migrations = CopyMigrations();
-        var parser = CommandApp.Build("test", default);
-
-        await parser.Parse(new[]
+        if (!EnsureSupported())
         {
-            "up",
-            "--source", $"file://{migrations}",
-            "--database", _sqlServer.ConnectionString,
-        }).InvokeAsync(new TestConsole());
+            return;
+        }
 
-        await parser.Parse(new[]
+        var token = TestContext.Current.CancellationToken;
+        var parser = CommandApp.Build("test", token);
+
+        var (directory, sourceUri) = CopyMigrations();
+        try
         {
-            "drop",
-            "--force",
-            "--source", $"file://{migrations}",
-            "--database", _sqlServer.ConnectionString,
-        }).InvokeAsync(new TestConsole());
+            await parser.InvokeAsync(new[]
+            {
+                "up",
+                "--source", sourceUri,
+                "--database", _sqlServer.ConnectionString,
+            }, new TestConsole());
 
-        var state = await _sqlServer.GetStateAsync();
-        Assert.Null(state.Version);
+            await parser.InvokeAsync(new[]
+            {
+                "drop",
+                "--force",
+                "--source", sourceUri,
+                "--database", _sqlServer.ConnectionString,
+            }, new TestConsole());
+
+            var state = await _sqlServer.GetStateAsync();
+            Assert.Null(state.Version);
+        }
+        finally
+        {
+            TryDelete(directory);
+        }
     }
 
-    private static void SkipIfUnsupported()
+    private static bool EnsureSupported()
     {
         if (!OperatingSystem.IsLinux())
         {
-            throw new SkipException("Testcontainers-based CLI tests require Linux environment.");
+            return false;
         }
 
-        if (Environment.GetEnvironmentVariable("CI") is null)
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")))
         {
-            throw new SkipException("Skipping container-backed CLI integration tests outside CI runner.");
+            return false;
         }
+        return true;
     }
 
-    private static string CopyMigrations()
+    private static (string Directory, string SourceUri) CopyMigrations()
     {
         var sourceRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         var examples = Path.Combine(sourceRoot, "examples", "migrations");
@@ -112,7 +139,22 @@ public sealed class CliIntegrationTests : IClassFixture<PostgresContainerFixture
             File.Copy(file, Path.Combine(target, Path.GetFileName(file)!));
         }
 
-        return target;
+        var uri = new Uri(Path.EndsInDirectorySeparator(target) ? target : target + Path.DirectorySeparatorChar).AbsoluteUri;
+        return (target, uri);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+        }
     }
 }
 
@@ -139,7 +181,7 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
     public async Task<MigrationVersionState> GetStateAsync()
     {
-        await using var driver = new Nika.Migrations.Drivers.Postgres.PostgresScriptMigrationDriver(
+        await using var driver = new PostgresScriptMigrationDriver(
             new PostgresScriptMigrationDriverOptions(ConnectionString));
         return await driver.GetVersionStateAsync(default);
     }
@@ -166,7 +208,7 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
 
     public async Task<MigrationVersionState> GetStateAsync()
     {
-        await using var driver = new Nika.Migrations.Drivers.SqlServer.SqlServerScriptMigrationDriver(
+        await using var driver = new SqlServerScriptMigrationDriver(
             new SqlServerScriptMigrationDriverOptions(ConnectionString));
         return await driver.GetVersionStateAsync(default);
     }

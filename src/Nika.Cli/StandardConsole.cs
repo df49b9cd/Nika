@@ -23,14 +23,9 @@ internal sealed class StandardConsole : IConsole
 
     public bool IsInputRedirected => Console.IsInputRedirected;
 
-    private sealed class StreamWriterAdapter : IStandardStreamWriter
+    private sealed class StreamWriterAdapter(TextWriter writer) : IStandardStreamWriter
     {
-        private readonly TextWriter _writer;
-
-        public StreamWriterAdapter(TextWriter writer)
-        {
-            _writer = writer;
-        }
+        private readonly TextWriter _writer = writer;
 
         public void Write(string? value)
         {

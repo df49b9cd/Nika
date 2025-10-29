@@ -11,30 +11,20 @@ internal sealed record GlobalOptions(
     uint LockTimeout,
     bool Verbose);
 
-internal sealed class GlobalOptionsReader
+internal sealed class GlobalOptionsReader(
+    Option<string?> sourceOption,
+    Option<string?> pathOption,
+    Option<string?> databaseOption,
+    Option<uint> prefetchOption,
+    Option<uint> lockTimeoutOption,
+    Option<bool> verboseOption)
 {
-    private readonly Option<string?> _sourceOption;
-    private readonly Option<string?> _pathOption;
-    private readonly Option<string?> _databaseOption;
-    private readonly Option<uint> _prefetchOption;
-    private readonly Option<uint> _lockTimeoutOption;
-    private readonly Option<bool> _verboseOption;
-
-    public GlobalOptionsReader(
-        Option<string?> sourceOption,
-        Option<string?> pathOption,
-        Option<string?> databaseOption,
-        Option<uint> prefetchOption,
-        Option<uint> lockTimeoutOption,
-        Option<bool> verboseOption)
-    {
-        _sourceOption = sourceOption;
-        _pathOption = pathOption;
-        _databaseOption = databaseOption;
-        _prefetchOption = prefetchOption;
-        _lockTimeoutOption = lockTimeoutOption;
-        _verboseOption = verboseOption;
-    }
+    private readonly Option<string?> _sourceOption = sourceOption;
+    private readonly Option<string?> _pathOption = pathOption;
+    private readonly Option<string?> _databaseOption = databaseOption;
+    private readonly Option<uint> _prefetchOption = prefetchOption;
+    private readonly Option<uint> _lockTimeoutOption = lockTimeoutOption;
+    private readonly Option<bool> _verboseOption = verboseOption;
 
     public GlobalOptions Read(ParseResult parseResult)
         => new(

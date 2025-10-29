@@ -4,18 +4,12 @@ using System.Threading.Tasks;
 
 namespace Nika.Migrations;
 
-public sealed class MigrationRunner
+public sealed class MigrationRunner(IMigrationSource source, IMigrationDriver driver)
 {
-    private readonly IMigrationSource _source;
-    private readonly IMigrationDriver _driver;
+    private readonly IMigrationSource _source = source ?? throw new ArgumentNullException(nameof(source));
+    private readonly IMigrationDriver _driver = driver ?? throw new ArgumentNullException(nameof(driver));
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private MigrationRegistry? _registry;
-
-    public MigrationRunner(IMigrationSource source, IMigrationDriver driver)
-    {
-        _source = source ?? throw new ArgumentNullException(nameof(source));
-        _driver = driver ?? throw new ArgumentNullException(nameof(driver));
-    }
 
     public Task UpAsync(CancellationToken cancellationToken = default)
         => WithDriverLockAsync(ct => UpInternalAsync(limit: null, ct), cancellationToken);

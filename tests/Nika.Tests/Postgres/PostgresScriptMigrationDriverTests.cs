@@ -16,15 +16,10 @@ public sealed class PostgresContainerCollection : ICollectionFixture<PostgresCon
 }
 
 [Collection("postgres-container")]
-public sealed class PostgresScriptMigrationDriverTests
+public sealed class PostgresScriptMigrationDriverTests(PostgresContainerFixture fixture)
 {
-    private readonly PostgresContainerFixture _fixture;
+    private readonly PostgresContainerFixture _fixture = fixture;
     private static CancellationToken TestToken => TestContext.Current.CancellationToken;
-
-    public PostgresScriptMigrationDriverTests(PostgresContainerFixture fixture)
-    {
-        _fixture = fixture;
-    }
 
     [Fact]
     public async Task ExecutesScriptsAgainstPostgresContainer()

@@ -99,17 +99,11 @@ public sealed class FileSystemMigrationSource : IMigrationSource
         return Task.FromResult<IReadOnlyCollection<Migration>>(migrations);
     }
 
-    private sealed class FileMigrationDefinition
+    private sealed class FileMigrationDefinition(long version, string description)
     {
-        public FileMigrationDefinition(long version, string description)
-        {
-            Version = version;
-            Description = description;
-        }
+        public long Version { get; } = version;
 
-        public long Version { get; }
-
-        public string Description { get; }
+        public string Description { get; } = description;
 
         public string? UpPath { get; set; }
 

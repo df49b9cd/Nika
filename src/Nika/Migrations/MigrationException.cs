@@ -23,13 +23,7 @@ public sealed class DirtyMigrationStateException : MigrationException
     }
 }
 
-public sealed class MissingMigrationException : MigrationException
+public sealed class MissingMigrationException(long version) : MigrationException($"Migration with version '{version}' was not found in the registry.")
 {
-    public MissingMigrationException(long version)
-        : base($"Migration with version '{version}' was not found in the registry.")
-    {
-        Version = version;
-    }
-
-    public long Version { get; }
+    public long Version { get; } = version;
 }

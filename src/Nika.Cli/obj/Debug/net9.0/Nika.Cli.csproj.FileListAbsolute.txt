@@ -73,3 +73,4 @@
 /Users/smolesen/Dev/Nika/src/Nika.Cli/bin/Debug/net9.0/tr/System.CommandLine.resources.dll
 /Users/smolesen/Dev/Nika/src/Nika.Cli/bin/Debug/net9.0/zh-Hans/System.CommandLine.resources.dll
 /Users/smolesen/Dev/Nika/src/Nika.Cli/bin/Debug/net9.0/zh-Hant/System.CommandLine.resources.dll
+/Users/smolesen/Dev/Nika/src/Nika.Cli/obj/Debug/net9.0/Nika.Cli.sourcelink.json

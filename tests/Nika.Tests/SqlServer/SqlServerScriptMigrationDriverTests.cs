@@ -17,15 +17,10 @@ public sealed class SqlServerContainerCollection : ICollectionFixture<SqlServerC
 }
 
 [Collection("sqlserver-container")]
-public sealed class SqlServerScriptMigrationDriverTests
+public sealed class SqlServerScriptMigrationDriverTests(SqlServerContainerFixture fixture)
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerContainerFixture _fixture = fixture;
     private static CancellationToken TestToken => TestContext.Current.CancellationToken;
-
-    public SqlServerScriptMigrationDriverTests(SqlServerContainerFixture fixture)
-    {
-        _fixture = fixture;
-    }
 
     [Fact]
     public async Task ExecutesScriptsAgainstSqlServerContainer()

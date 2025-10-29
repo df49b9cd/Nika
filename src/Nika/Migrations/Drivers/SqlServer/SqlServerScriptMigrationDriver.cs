@@ -9,12 +9,12 @@ using Nika.Migrations;
 
 namespace Nika.Migrations.Drivers.SqlServer;
 
-public sealed class SqlServerScriptMigrationDriver : IScriptMigrationDriver
+public sealed class SqlServerScriptMigrationDriver(SqlServerScriptMigrationDriverOptions options) : IScriptMigrationDriver
 {
     private const long NilVersion = -1;
     private static readonly Regex BatchSeparator = new("^\\s*GO(?:\\s+(?<count>\\d+))?\\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-    private readonly SqlServerScriptMigrationDriverOptions _options;
+    private readonly SqlServerScriptMigrationDriverOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly SemaphoreSlim _connectionGate = new(1, 1);
 
     private SqlConnection? _connection;
@@ -23,11 +23,6 @@ public sealed class SqlServerScriptMigrationDriver : IScriptMigrationDriver
     private string? _schema;
     private string? _table;
     private string? _qualifiedTable;
-
-    public SqlServerScriptMigrationDriver(SqlServerScriptMigrationDriverOptions options)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
 
     public async Task LockAsync(CancellationToken cancellationToken)
     {

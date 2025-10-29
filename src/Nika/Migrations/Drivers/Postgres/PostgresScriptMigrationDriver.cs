@@ -9,11 +9,11 @@ using Npgsql;
 
 namespace Nika.Migrations.Drivers.Postgres;
 
-public sealed class PostgresScriptMigrationDriver : IScriptMigrationDriver
+public sealed class PostgresScriptMigrationDriver(PostgresScriptMigrationDriverOptions options) : IScriptMigrationDriver
 {
     private const long NilVersion = -1;
 
-    private readonly PostgresScriptMigrationDriverOptions _options;
+    private readonly PostgresScriptMigrationDriverOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly SemaphoreSlim _connectionGate = new(1, 1);
 
     private NpgsqlConnection? _connection;
@@ -23,11 +23,6 @@ public sealed class PostgresScriptMigrationDriver : IScriptMigrationDriver
     private string? _migrationsSchema;
     private string? _migrationsTable;
     private string? _qualifiedMigrationsTable;
-
-    public PostgresScriptMigrationDriver(PostgresScriptMigrationDriverOptions options)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
 
     public async Task LockAsync(CancellationToken cancellationToken)
     {

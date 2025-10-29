@@ -15,20 +15,13 @@ using Npgsql;
 
 namespace Nika.Cli;
 
-internal sealed class MigrationSession : IAsyncDisposable
+internal sealed class MigrationSession(IMigrationSource source, IMigrationDriver driver, MigrationRunner runner) : IAsyncDisposable
 {
-    public MigrationSession(IMigrationSource source, IMigrationDriver driver, MigrationRunner runner)
-    {
-        Source = source;
-        Driver = driver;
-        Runner = runner;
-    }
+    public IMigrationSource Source { get; } = source;
 
-    public IMigrationSource Source { get; }
+    public IMigrationDriver Driver { get; } = driver;
 
-    public IMigrationDriver Driver { get; }
-
-    public MigrationRunner Runner { get; }
+    public MigrationRunner Runner { get; } = runner;
 
     public ValueTask DisposeAsync()
         => Driver.DisposeAsync();
@@ -242,10 +235,6 @@ internal static class MigrationSessionFactory
     }
 }
 
-internal sealed class CliUsageException : Exception
+internal sealed class CliUsageException(string message) : Exception(message)
 {
-    public CliUsageException(string message)
-        : base(message)
-    {
-    }
 }
