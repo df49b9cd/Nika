@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    tags:
+      - "v*"
   pull_request:
     branches: [main]
 
@@ -12,14 +14,15 @@ env:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
 
@@ -34,3 +37,187 @@ jobs:
 
       - name: Test
         run: dotnet test Nika.sln --configuration Release --no-build
+
+  package_binaries:
+    name: Package Binaries
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [linux-x64, linux-arm64, win-x64, osx-arm64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish self-contained binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RID="${{ matrix.rid }}"
+          case "$RID" in
+            linux-x64)
+              OS="linux"
+              ARCH="amd64"
+              ;;
+            linux-arm64)
+              OS="linux"
+              ARCH="arm64"
+              ;;
+            win-x64)
+              OS="windows"
+              ARCH="amd64"
+              ;;
+            osx-arm64)
+              OS="darwin"
+              ARCH="arm64"
+              ;;
+            *)
+              echo "Unsupported RID: $RID" >&2
+              exit 1
+              ;;
+          esac
+
+          PUBLISH_DIR="artifacts/publish/$RID"
+          dotnet publish src/Nika.Cli/Nika.Cli.csproj \
+            --configuration Release \
+            --runtime "$RID" \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            --output "$PUBLISH_DIR"
+
+          if [[ "$OS" == "windows" ]]; then
+            mv "$PUBLISH_DIR/Nika.Cli.exe" "$PUBLISH_DIR/nika.exe"
+          else
+            mv "$PUBLISH_DIR/Nika.Cli" "$PUBLISH_DIR/nika"
+          fi
+          cp README.md "$PUBLISH_DIR/"
+
+          EXTRA_FILES=("README.md")
+          if [[ -f LICENSE ]]; then
+            cp LICENSE "$PUBLISH_DIR/"
+            EXTRA_FILES+=("LICENSE")
+          fi
+
+          DIST_DIR="artifacts/dist"
+          mkdir -p "$DIST_DIR"
+          ARCHIVE_BASENAME="nika.${OS}-${ARCH}"
+
+          if [[ "$OS" == "windows" ]]; then
+            files_to_zip=("$PUBLISH_DIR/nika.exe")
+            for extra in "${EXTRA_FILES[@]}"; do
+              files_to_zip+=("$PUBLISH_DIR/$extra")
+            done
+            zip -j "$DIST_DIR/${ARCHIVE_BASENAME}.zip" "${files_to_zip[@]}"
+          else
+            chmod +x "$PUBLISH_DIR/nika"
+            tar_args=(nika)
+            tar_args+=("${EXTRA_FILES[@]}")
+            tar -czf "$DIST_DIR/${ARCHIVE_BASENAME}.tar.gz" \
+              -C "$PUBLISH_DIR" \
+              "${tar_args[@]}"
+          fi
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: nika-${{ matrix.rid }}
+          path: artifacts/dist/*
+          if-no-files-found: error
+          retention-days: 5
+
+  docker_image:
+    name: Publish Docker Image
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          SEMVER="${VERSION#v}"
+          MAJOR="${SEMVER%%.*}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "major=v${MAJOR}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.major }}
+            ghcr.io/${{ github.repository }}:latest
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - package_binaries
+      - docker_image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nika-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(find . -maxdepth 1 -type f ! -name 'sha256sum.txt' -printf '%P\n')
+          if [[ -z "$files" ]]; then
+            echo "No artifacts found to checksum" >&2
+            exit 1
+          fi
+          sha256sum $files > sha256sum.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
