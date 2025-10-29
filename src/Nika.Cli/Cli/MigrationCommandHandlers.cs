@@ -136,6 +136,23 @@ internal static class MigrationCommandHandlers
         }).ConfigureAwait(false);
     }
 
+    public static async Task HandleStepsAsync(GlobalOptions options, int steps, InvocationContext context)
+    {
+        if (steps == 0)
+        {
+            WriteError(context, "Argument N must not be zero.");
+            context.ExitCode = 2;
+            return;
+        }
+
+        await ExecuteWithSessionAsync(options, context, async (session, token) =>
+        {
+            await session.Runner.StepsAsync(steps, token).ConfigureAwait(false);
+            WriteLine(context, $"Executed migration steps: {steps}.");
+            await ReportStateAsync(session.Runner, context, token).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
     public static async Task HandleCreateAsync(
         GlobalOptions options,
         string name,
@@ -145,7 +162,6 @@ internal static class MigrationCommandHandlers
         int digits,
         string format,
         string timezone,
-        bool print,
         InvocationContext context)
     {
         try
@@ -155,9 +171,19 @@ internal static class MigrationCommandHandlers
                 throw new CliUsageException("Migration name must be provided.");
             }
 
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                throw new CliUsageException("--ext flag must be specified.");
+            }
+
             var timeZone = ResolveTimeZone(timezone);
             var scaffolder = new MigrationFileScaffolder(directory);
             var cancellationToken = GetCancellationToken(context);
+
+            if (sequential && !string.Equals(format, MigrationFileScaffolder.DefaultTimestampFormat, StringComparison.Ordinal))
+            {
+                throw new CliUsageException("The --seq and --format options are mutually exclusive.");
+            }
 
             var result = await scaffolder.ScaffoldAsync(
                 name,
@@ -168,12 +194,9 @@ internal static class MigrationCommandHandlers
                 timeZone,
                 cancellationToken).ConfigureAwait(false);
 
-            if (print)
+            foreach (var path in result.CreatedFiles)
             {
-                foreach (var path in result.CreatedFiles)
-                {
-                    WriteLine(context, path);
-                }
+                WriteLine(context, path);
             }
         }
         catch (CliUsageException ex)
@@ -198,7 +221,12 @@ internal static class MigrationCommandHandlers
         try
         {
             await using var session = await MigrationSessionFactory.CreateAsync(options, cancellationToken).ConfigureAwait(false);
+            session.Runner.PrefetchCount = options.Prefetch > 0 ? (int)options.Prefetch : 0;
+            session.Runner.Logger = options.Verbose
+                ? message => WriteLine(context, message)
+                : null;
             await action(session, cancellationToken).ConfigureAwait(false);
+            session.Runner.Logger = null;
         }
         catch (CliUsageException ex)
         {

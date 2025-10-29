@@ -108,6 +108,7 @@ internal static class CommandApp
         var forceCommand = CreateForceCommand(optionsReader);
         var versionCommand = CreateVersionCommand(optionsReader);
         var createCommand = CreateCreateCommand(optionsReader);
+        var stepsCommand = CreateStepsCommand(optionsReader);
 
         root.Add(upCommand);
         root.Add(downCommand);
@@ -116,6 +117,7 @@ internal static class CommandApp
         root.Add(forceCommand);
         root.Add(versionCommand);
         root.Add(createCommand);
+        root.Add(stepsCommand);
     }
 
     private static Command CreateUpCommand(GlobalOptionsReader optionsReader)
@@ -236,11 +238,34 @@ internal static class CommandApp
         return command;
     }
 
+    private static Command CreateStepsCommand(GlobalOptionsReader optionsReader)
+    {
+        var stepsArgument = new Argument<int>("n", "Move forward/backward by N steps");
+
+        var command = new Command("steps", "Move forward/backward by N steps")
+        {
+            stepsArgument,
+        };
+
+        command.SetHandler(async context =>
+        {
+            var options = optionsReader.Read(context.ParseResult);
+            var steps = context.ParseResult.GetValueForArgument(stepsArgument);
+            await MigrationCommandHandlers.HandleStepsAsync(options, steps, context);
+        });
+
+        return command;
+    }
+
     private static Command CreateCreateCommand(GlobalOptionsReader optionsReader)
     {
         var nameArgument = new Argument<string>("name", "Title of the new migration");
 
-        var extensionOption = new Option<string>("--ext", () => "sql", "File extension for migration files");
+        var extensionOption = new Option<string>("--ext", "File extension for migration files")
+        {
+            Arity = ArgumentArity.ExactlyOne,
+            IsRequired = true,
+        };
         extensionOption.AddAlias("-ext");
 
         var directoryOption = new Option<string>("--dir", () => ".", "Target directory for the new migration files");
@@ -252,14 +277,11 @@ internal static class CommandApp
         var digitsOption = new Option<int>("--digits", () => 6, "Number of digits to use for sequential migrations");
         digitsOption.AddAlias("-digits");
 
-        var formatOption = new Option<string>("--format", () => "20060102150405", "Go-style time format for timestamped migrations");
+        var formatOption = new Option<string>("--format", () => MigrationFileScaffolder.DefaultTimestampFormat, "Go-style time format for timestamped migrations");
         formatOption.AddAlias("-format");
 
         var timezoneOption = new Option<string>("--tz", () => "UTC", "Time zone used for timestamped migrations");
         timezoneOption.AddAlias("-tz");
-
-        var printOption = new Option<bool>("--print", "Print newly created file paths");
-        printOption.AddAlias("-print");
 
         var command = new Command("create", "Create a set of timestamped up/down migrations")
         {
@@ -272,19 +294,17 @@ internal static class CommandApp
         command.AddOption(digitsOption);
         command.AddOption(formatOption);
         command.AddOption(timezoneOption);
-        command.AddOption(printOption);
 
         command.SetHandler(async context =>
         {
             var options = optionsReader.Read(context.ParseResult);
             var name = context.ParseResult.GetValueForArgument(nameArgument);
-            var extension = context.ParseResult.GetValueForOption(extensionOption)!;
-            var directory = context.ParseResult.GetValueForOption(directoryOption)!;
+            var extension = context.ParseResult.GetValueForOption(extensionOption) ?? string.Empty;
+            var directory = context.ParseResult.GetValueForOption(directoryOption) ?? ".";
             var sequential = context.ParseResult.GetValueForOption(sequentialOption);
             var digits = context.ParseResult.GetValueForOption(digitsOption);
-            var format = context.ParseResult.GetValueForOption(formatOption)!;
-            var timezone = context.ParseResult.GetValueForOption(timezoneOption)!;
-            var print = context.ParseResult.GetValueForOption(printOption);
+            var format = context.ParseResult.GetValueForOption(formatOption) ?? MigrationFileScaffolder.DefaultTimestampFormat;
+            var timezone = context.ParseResult.GetValueForOption(timezoneOption) ?? "UTC";
 
             await MigrationCommandHandlers.HandleCreateAsync(
                 options,
@@ -295,7 +315,6 @@ internal static class CommandApp
                 digits,
                 format,
                 timezone,
-                print,
                 context);
         });
 

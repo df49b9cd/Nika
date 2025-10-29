@@ -11,6 +11,16 @@ public sealed class MigrationRunner(IMigrationSource source, IMigrationDriver dr
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private MigrationRegistry? _registry;
 
+    /// <summary>
+    /// The maximum number of migrations to load in a single batch. A value of 0 means no limit.
+    /// </summary>
+    public int PrefetchCount { get; set; }
+
+    /// <summary>
+    /// Optional logger invoked with verbose diagnostics during migration execution.
+    /// </summary>
+    public Action<string>? Logger { get; set; }
+
     public Task UpAsync(CancellationToken cancellationToken = default)
         => WithDriverLockAsync(ct => UpInternalAsync(limit: null, ct), cancellationToken);
 
@@ -78,35 +88,64 @@ public sealed class MigrationRunner(IMigrationSource source, IMigrationDriver dr
     private async Task UpInternalAsync(int? limit, CancellationToken cancellationToken)
     {
         var registry = await GetRegistryAsync(cancellationToken).ConfigureAwait(false);
-        var state = await _driver.GetVersionStateAsync(cancellationToken).ConfigureAwait(false);
+        var remaining = limit ?? int.MaxValue;
 
-        if (state.IsDirty)
+        while (remaining > 0)
         {
-            throw new DirtyMigrationStateException();
-        }
+            var state = await _driver.GetVersionStateAsync(cancellationToken).ConfigureAwait(false);
 
-        var pending = registry.GetMigrationsAfter(state.Version, limit);
-        foreach (var migration in pending)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-
-            try
+            if (state.IsDirty)
             {
-                await migration.ApplyAsync(_driver, cancellationToken).ConfigureAwait(false);
+                throw new DirtyMigrationStateException();
             }
-            catch (OperationCanceledException)
+
+            var chunkSize = remaining;
+            if (PrefetchCount > 0 && chunkSize > PrefetchCount)
             {
+                chunkSize = PrefetchCount;
+            }
+
+            var chunkLimit = chunkSize == int.MaxValue ? (int?)null : chunkSize;
+            var pending = registry.GetMigrationsAfter(state.Version, chunkLimit);
+            if (pending.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var migration in pending)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-                throw new MigrationException($"Failed to apply migration {migration.Version}: {migration.Description}", ex);
+
+                try
+                {
+                    Logger?.Invoke($"Applying migration {migration.Version}: {migration.Description}");
+                    await migration.ApplyAsync(_driver, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
+                    throw new MigrationException($"Failed to apply migration {migration.Version}: {migration.Description}", ex);
+                }
+
+                await _driver.SetVersionAsync(migration.Version, false, CancellationToken.None).ConfigureAwait(false);
             }
 
-            await _driver.SetVersionAsync(migration.Version, false, CancellationToken.None).ConfigureAwait(false);
+            remaining -= pending.Count;
+            if (pending.Count < chunkSize)
+            {
+                break;
+            }
+
+            if (!limit.HasValue && PrefetchCount <= 0)
+            {
+                break;
+            }
         }
     }
 
@@ -130,34 +169,75 @@ public sealed class MigrationRunner(IMigrationSource source, IMigrationDriver dr
             throw new MissingMigrationException(state.Version.Value);
         }
 
-        var toRevert = registry.GetMigrationsAtOrBelow(state.Version.Value, limit);
-        if (toRevert.Count == 0)
+        var remaining = limit ?? int.MaxValue;
+
+        while (remaining > 0)
         {
-            throw new MissingMigrationException(state.Version.Value);
-        }
+            var currentState = await _driver.GetVersionStateAsync(cancellationToken).ConfigureAwait(false);
 
-        foreach (var migration in toRevert)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-
-            try
+            if (currentState.IsDirty)
             {
-                await migration.RevertAsync(_driver, cancellationToken).ConfigureAwait(false);
+                throw new DirtyMigrationStateException();
             }
-            catch (OperationCanceledException)
+
+            if (currentState.Version is null)
             {
+                break;
+            }
+
+            if (!registry.TryGetMigration(currentState.Version.Value, out _))
+            {
+                throw new MissingMigrationException(currentState.Version.Value);
+            }
+
+            var chunkSize = remaining;
+            if (PrefetchCount > 0 && chunkSize > PrefetchCount)
+            {
+                chunkSize = PrefetchCount;
+            }
+
+            var chunkLimit = chunkSize == int.MaxValue ? (int?)null : chunkSize;
+            var toRevert = registry.GetMigrationsAtOrBelow(currentState.Version.Value, chunkLimit);
+            if (toRevert.Count == 0)
+            {
+                throw new MissingMigrationException(currentState.Version.Value);
+            }
+
+            foreach (var migration in toRevert)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
-                throw new MigrationException($"Failed to revert migration {migration.Version}: {migration.Description}", ex);
+
+                try
+                {
+                    Logger?.Invoke($"Reverting migration {migration.Version}: {migration.Description}");
+                    await migration.RevertAsync(_driver, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    await _driver.SetVersionAsync(migration.Version, true, CancellationToken.None).ConfigureAwait(false);
+                    throw new MigrationException($"Failed to revert migration {migration.Version}: {migration.Description}", ex);
+                }
+
+                var previousVersion = registry.GetPreviousVersion(migration.Version);
+                await _driver.SetVersionAsync(previousVersion, false, CancellationToken.None).ConfigureAwait(false);
             }
 
-            var previousVersion = registry.GetPreviousVersion(migration.Version);
-            await _driver.SetVersionAsync(previousVersion, false, CancellationToken.None).ConfigureAwait(false);
+            remaining -= toRevert.Count;
+            if (toRevert.Count < chunkSize)
+            {
+                break;
+            }
+
+            if (!limit.HasValue && PrefetchCount <= 0)
+            {
+                break;
+            }
         }
     }
 

@@ -11,6 +11,8 @@ namespace Nika.Cli;
 
 internal sealed class MigrationFileScaffolder
 {
+    public const string DefaultTimestampFormat = "20060102150405";
+
     private readonly string _directory;
 
     public MigrationFileScaffolder(string directory)
@@ -42,9 +44,13 @@ internal sealed class MigrationFileScaffolder
             throw new CliUsageException("Digits must be positive when using --seq.");
         }
 
+        var effectiveFormat = string.IsNullOrWhiteSpace(format)
+            ? DefaultTimestampFormat
+            : format;
+
         var version = sequential
             ? GetNextSequentialVersion(ext, digits)
-            : GetTimestampVersion(format, timeZone);
+            : GetTimestampVersion(effectiveFormat, timeZone);
 
         EnsureVersionIsUnique(version, ext);
 
@@ -110,11 +116,6 @@ internal sealed class MigrationFileScaffolder
         {
             var unixNanoseconds = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, timeZone).ToUnixTimeMilliseconds() * 1_000_000;
             return unixNanoseconds.ToString(CultureInfo.InvariantCulture);
-        }
-
-        if (string.IsNullOrWhiteSpace(format))
-        {
-            throw new CliUsageException("Time format may not be empty.");
         }
 
         var dotNetFormat = ConvertGoLayoutToDotNet(format);
