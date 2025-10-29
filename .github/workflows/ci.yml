@@ -27,16 +27,16 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore
-        run: dotnet restore Nika.sln
+        run: dotnet restore Nika.slnx
 
       - name: Format Check
-        run: dotnet format Nika.sln --verify-no-changes
+        run: dotnet format Nika.slnx --verify-no-changes
 
       - name: Build
-        run: dotnet build Nika.sln --configuration Release --no-restore
+        run: dotnet build Nika.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test Nika.sln --configuration Release --no-build
+        run: dotnet test Nika.slnx --configuration Release --no-build
 
   package_binaries:
     name: Package Binaries

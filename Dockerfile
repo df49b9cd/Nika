@@ -6,7 +6,7 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore Nika.sln
+RUN dotnet restore Nika.slnx
 
 RUN case "$TARGETARCH" in \
       amd64) RID=linux-x64 ;; \
