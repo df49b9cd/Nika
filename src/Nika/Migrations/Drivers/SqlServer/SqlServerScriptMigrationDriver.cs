@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -13,6 +14,13 @@ public sealed class SqlServerScriptMigrationDriver(SqlServerScriptMigrationDrive
 {
     private const long NilVersion = -1;
     private static readonly Regex BatchSeparator = new("^\\s*GO(?:\\s+(?<count>\\d+))?\\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
+    private static readonly IReadOnlyDictionary<int, string> LockErrorMessages = new Dictionary<int, string>
+    {
+        { -1, "The lock request timed out." },
+        { -2, "The lock request was canceled." },
+        { -3, "The lock request was chosen as a deadlock victim." },
+        { -999, "Parameter validation or other call error." },
+    };
 
     private readonly SqlServerScriptMigrationDriverOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly SemaphoreSlim _connectionGate = new(1, 1);
@@ -20,8 +28,8 @@ public sealed class SqlServerScriptMigrationDriver(SqlServerScriptMigrationDrive
     private SqlConnection? _connection;
     private bool _lockHeld;
     private bool _disposed;
-    private string? _schema;
-    private string? _table;
+    private string? _schemaName;
+    private string? _tableName;
     private string? _qualifiedTable;
 
     public async Task LockAsync(CancellationToken cancellationToken)
@@ -85,16 +93,16 @@ public sealed class SqlServerScriptMigrationDriver(SqlServerScriptMigrationDrive
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var deleteSql = $"DELETE FROM {GetQualifiedTable()}";
-            await using (var deleteCommand = new SqlCommand(deleteSql, connection, transaction)
+            var truncateSql = $"TRUNCATE TABLE {GetQualifiedTable()}";
+            await using (var truncateCommand = new SqlCommand(truncateSql, connection, transaction)
             {
                 CommandTimeout = (int)_options.CommandTimeout.TotalSeconds,
             })
             {
-                await deleteCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                await truncateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            var shouldInsert = version.HasValue || isDirty;
+            var shouldInsert = version.HasValue && version.Value >= 0 || (!version.HasValue && isDirty);
             if (shouldInsert)
             {
                 var storedVersion = version ?? NilVersion;
@@ -232,7 +240,7 @@ CLOSE @Cursor DEALLOCATE @Cursor";
             }
 
             return _connection;
-    }
+        }
 
         await _connectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -271,6 +279,8 @@ CLOSE @Cursor DEALLOCATE @Cursor";
             return;
         }
 
+        await EnsureSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+
         var resource = $"nika:{GetQualifiedTable()}";
         const string lockSql = @"
 DECLARE @result INT;
@@ -285,10 +295,12 @@ SELECT @result;";
         command.Parameters.AddWithValue("@timeout", Convert.ToInt32(_options.CommandTimeout.TotalMilliseconds));
 
         var scalar = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-        var result = Convert.ToInt32(scalar);
+        var result = Convert.ToInt32(scalar ?? 0, CultureInfo.InvariantCulture);
         if (result < 0)
         {
-            throw new MigrationException($"Failed to acquire SQL Server application lock. Code: {result}");
+            throw new MigrationException(LockErrorMessages.TryGetValue(result, out var message)
+                ? message
+                : $"Failed to acquire SQL Server application lock (code {result}).");
         }
 
         _lockHeld = true;
@@ -301,8 +313,13 @@ SELECT @result;";
             return;
         }
 
+        await EnsureSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+
         var resource = $"nika:{GetQualifiedTable()}";
-        const string unlockSql = "EXEC sp_releaseapplock @Resource = @resource, @LockOwner = 'Session'";
+        const string unlockSql = @"
+DECLARE @result INT;
+EXEC @result = sp_releaseapplock @Resource = @resource, @LockOwner = 'Session';
+SELECT @result;";
 
         await using var command = new SqlCommand(unlockSql, connection)
         {
@@ -310,14 +327,22 @@ SELECT @result;";
         };
         command.Parameters.AddWithValue("@resource", resource);
 
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        var scalar = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        var result = Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
+        if (result < 0)
+        {
+            throw new MigrationException($"Failed to release SQL Server application lock (code {result}).");
+        }
+
         _lockHeld = false;
     }
 
     private async Task EnsureVersionTableAsync(SqlConnection connection, CancellationToken cancellationToken)
     {
-        var schema = GetSchema();
-        var table = GetTable();
+        await EnsureSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+
+        var schema = _schemaName!;
+        var table = _tableName!;
 
         var sql = @"
 IF NOT EXISTS (
@@ -421,33 +446,6 @@ END";
         return new SqlBatch(text, repeatCount);
     }
 
-    private string GetSchema()
-    {
-        if (!string.IsNullOrWhiteSpace(_schema))
-        {
-            return _schema!;
-        }
-
-        _schema = string.IsNullOrWhiteSpace(_options.MigrationsSchema)
-            ? "dbo"
-            : _options.MigrationsSchema;
-        return _schema!;
-    }
-
-    private string GetTable()
-    {
-        if (!string.IsNullOrWhiteSpace(_table))
-        {
-            return _table!;
-        }
-
-        _table = string.IsNullOrWhiteSpace(_options.MigrationsTable)
-            ? "schema_migrations"
-            : _options.MigrationsTable;
-
-        return _table!;
-    }
-
     private string GetQualifiedTable()
     {
         if (!string.IsNullOrWhiteSpace(_qualifiedTable))
@@ -455,12 +453,57 @@ END";
             return _qualifiedTable!;
         }
 
-        _qualifiedTable = $"{BracketIdentifier(GetSchema())}.{BracketIdentifier(GetTable())}";
+        if (string.IsNullOrWhiteSpace(_schemaName) || string.IsNullOrWhiteSpace(_tableName))
+        {
+            throw new MigrationException("Migration table name has not been resolved yet.");
+        }
+
+        _qualifiedTable = $"{BracketIdentifier(_schemaName!)}.{BracketIdentifier(_tableName!)}";
         return _qualifiedTable!;
     }
 
     private static string BracketIdentifier(string identifier)
-        => "[" + identifier.Replace("]", "]]") + "]";
+        => "[" + identifier.Replace("]", "]]", StringComparison.Ordinal) + "]";
+
+    private async Task EnsureSchemaAsync(SqlConnection connection, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(_schemaName) && !string.IsNullOrWhiteSpace(_tableName))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_schemaName))
+        {
+            if (!string.IsNullOrWhiteSpace(_options.MigrationsSchema))
+            {
+                _schemaName = _options.MigrationsSchema;
+            }
+            else
+            {
+                const string schemaSql = "SELECT SCHEMA_NAME()";
+                await using var schemaCommand = new SqlCommand(schemaSql, connection)
+                {
+                    CommandTimeout = (int)_options.CommandTimeout.TotalSeconds,
+                };
+
+                var result = await schemaCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                _schemaName = Convert.ToString(result, CultureInfo.InvariantCulture);
+                if (string.IsNullOrWhiteSpace(_schemaName))
+                {
+                    throw new MigrationException("Unable to resolve default schema name.");
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(_tableName))
+        {
+            _tableName = string.IsNullOrWhiteSpace(_options.MigrationsTable)
+                ? "schema_migrations"
+                : _options.MigrationsTable;
+        }
+
+        _qualifiedTable = null;
+    }
 
     private readonly record struct SqlBatch(string CommandText, int RepeatCount);
 }
